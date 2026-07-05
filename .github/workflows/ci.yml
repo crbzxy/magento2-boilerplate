@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    name: PHP lint + Magento Coding Standard (custom code only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          coverage: none
+
+      - name: Install phpcs + Magento Coding Standard
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: PHP syntax check (php -l)
+        run: |
+          find src/app/code/Truper src/app/design/frontend/Truper -name '*.php' -o -name '*.phtml' \
+            | xargs -n1 -I{} php -l {}
+
+      - name: Well-formed XML check
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
+          find src/app/code/Truper src/app/design/frontend/Truper -name '*.xml' \
+            | xargs -n1 xmllint --noout
+
+      # warning-severity=0: el ruleset Magento2 genera ~70 warnings de estilo CSS/LESS
+      # preexistentes (comillas, mayúsculas de color) en el tema Truper. El gate falla
+      # solo por errores reales; subir la severidad de warnings queda como tarea de
+      # limpieza incremental, no como bloqueo del primer CI.
+      - name: Magento Coding Standard (phpcs)
+        run: vendor/bin/phpcs --standard=phpcs.xml.dist --warning-severity=0

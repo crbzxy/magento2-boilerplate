@@ -1,4 +1,5 @@
 .env
+/vendor/
 src/**
 !src/app/
 !src/app/code/

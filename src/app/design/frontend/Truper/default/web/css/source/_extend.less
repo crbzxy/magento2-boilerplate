@@ -1,12 +1,31 @@
 //
-//  Truper structural overrides
+//  Material Design 3 component styles
+//  https://m3.material.io/
 //  _____________________________________________
 
-@import '_truper-tokens.less';
+@import '_m3-tokens.less';
+@import '_m3-mixins.less';
 
 & when (@media-common = true) {
     //
-    //  Underline text inputs
+    //  Base / typography
+    //  ---------------------------------------------
+
+    body {
+        background: @m3-surface;
+        color: @m3-on-surface;
+        font-family: @m3-font-family;
+        font-size: @m3-body-md;
+        letter-spacing: 0.25px;
+        line-height: 1.5;
+    }
+
+    a {
+        .m3-transition(color);
+    }
+
+    //
+    //  M3 outlined text fields
     //  ---------------------------------------------
 
     input.input-text,
@@ -17,119 +36,133 @@
     input[type="number"],
     input[type="url"],
     textarea {
-        border: none;
-        border-bottom: 1px solid @truper-color-stormy;
-        border-radius: 0;
-        box-shadow: none;
-        padding-left: 0;
-        padding-right: 0;
+        .m3-outlined-field();
 
-        &:focus {
-            border-bottom-color: @truper-color-primary;
-            box-shadow: none;
+        &:disabled {
+            background: fade(@m3-on-surface, 4%);
+            border-color: fade(@m3-on-surface, 12%);
+            color: fade(@m3-on-surface, 38%);
         }
+    }
+
+    textarea {
+        height: auto;
+        min-height: 120px;
+        padding: 16px;
     }
 
     .field._error {
         .control input,
         .control textarea {
-            border-bottom-color: @truper-color-error;
+            border-color: @m3-error;
+            border-width: 2px;
         }
     }
 
     .mage-error {
-        color: @truper-color-error;
+        color: @m3-error;
+        font-size: @m3-label-md;
         margin-top: 8px;
     }
 
+    .field .label {
+        color: @m3-on-surface-variant;
+        font-size: @m3-label-md;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
     //
-    //  Select dropdowns
+    //  Select — M3 outlined
     //  ---------------------------------------------
 
     select,
     .select {
-        border: 1px solid @truper-color-stormy;
-        border-radius: 4px;
-        min-height: 40px;
-
-        &:focus {
-            border-color: @truper-color-primary;
-            box-shadow: none;
-        }
+        .m3-outlined-field();
+        appearance: none;
     }
 
     //
-    //  Pill buttons
+    //  Buttons — M3 filled / outlined / text
     //  ---------------------------------------------
 
     button:not(.subscribe),
     .action:not(.subscribe) {
-        border-radius: 50px;
-        font-weight: @font-weight__regular;
-        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        .m3-outlined-button();
+        text-transform: none;
 
-        &:disabled,
-        &[disabled] {
-            background: @truper-color-disabled;
-            border-color: @truper-color-disabled;
-            color: @truper-color-white;
-            opacity: 1;
-            cursor: not-allowed;
+        &.primary {
+            .m3-filled-button();
         }
     }
 
     //
-    //  Newsletter footer
+    //  Cards & product tiles — M3 elevation
+    //  ---------------------------------------------
+
+    .product-item,
+    .block,
+    .box,
+    .cart-summary,
+    .opc-block-summary {
+        background: @m3-surface-container;
+        border-radius: @m3-shape-md;
+        box-shadow: @m3-elevation-1;
+    }
+
+    .product-item-info {
+        background: @m3-surface-container;
+        border-radius: @m3-shape-md;
+        .m3-transition(box-shadow);
+
+        &:hover {
+            box-shadow: @m3-elevation-2;
+        }
+    }
+
+    //
+    //  Newsletter — M3 composite field
     //  ---------------------------------------------
 
     .block.newsletter {
-        .field .control {
-            &:before {
-                color: @truper-color-stormy;
-            }
+        .field .control:before {
+            color: @m3-on-surface-variant;
         }
 
         input#newsletter {
-            background: @truper-color-white;
-            border: none;
-            border-bottom: 1px solid @truper-color-stormy;
-            border-radius: 0;
-            box-shadow: none;
-            height: 40px;
+            .m3-outlined-field();
+            border-bottom-right-radius: 0;
+            border-right: none;
+            border-top-right-radius: 0;
+            height: @m3-button-height;
             margin-right: 0;
-            padding: 0 16px 0 35px;
+            padding-left: 35px;
 
             &:focus {
-                border-bottom-color: @truper-color-primary;
-                box-shadow: none;
+                border-right: none;
+                padding-left: 34px;
             }
         }
 
         .action.subscribe {
-            background: @truper-color-primary;
-            border: 1px solid @truper-color-primary;
-            border-radius: 0 50px 50px 0;
-            color: @truper-color-white;
-            height: 40px;
+            .m3-filled-button();
+            border-bottom-left-radius: 0;
+            border-top-left-radius: 0;
             margin-left: -1px;
             padding: 0 24px;
-            white-space: nowrap;
-
-            &:hover {
-                background: darken(@truper-color-primary, 8%);
-                border-color: darken(@truper-color-primary, 8%);
-                color: @truper-color-white;
-            }
         }
     }
 
     //
-    //  Messages
+    //  Messages — M3 snackbar style
     //  ---------------------------------------------
 
     .message {
-        border-radius: 8px;
-        font-size: 14px;
+        border-radius: @m3-shape-sm;
+        box-shadow: @m3-elevation-2;
+        font-size: @m3-body-md;
+        letter-spacing: 0.25px;
 
         &.success,
         &.error,
@@ -138,8 +171,31 @@
         &.notice {
             a {
                 color: inherit;
+                font-weight: 500;
                 text-decoration: underline;
             }
         }
+    }
+
+    //
+    //  Header / footer surfaces
+    //  ---------------------------------------------
+
+    .page-header,
+    .page-footer {
+        background: @m3-surface-container;
+    }
+
+    .page-footer {
+        border-top: 1px solid @m3-outline-variant;
+    }
+
+    //
+    //  Focus visible — M3 accessibility
+    //  ---------------------------------------------
+
+    :focus-visible {
+        outline: 2px solid @m3-primary;
+        outline-offset: 2px;
     }
 }

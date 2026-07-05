@@ -1,0 +1,19 @@
+{
+    "name": "truper/module-landing-page",
+    "description": "Custom landing page controller and templates for the Truper storefront.",
+    "type": "magento2-module",
+    "license": "proprietary",
+    "require": {
+        "php": "~8.3.0||~8.4.0",
+        "magento/framework": "*",
+        "magento/module-cms": "*"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Truper\\LandingPage\\": ""
+        }
+    }
+}

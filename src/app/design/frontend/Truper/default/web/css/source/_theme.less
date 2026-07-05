@@ -1,115 +1,134 @@
 //
-//  Truper theme overrides
+//  Truper theme — Material Design 3 overrides on Luma
+//  https://m3.material.io/
 //  _____________________________________________
 
+//  _luma-base.less es una copia textual de
+//  vendor/magento/theme-frontend-luma/web/css/source/_theme.less (magento/theme-frontend-luma
+//  100.4.8 / Magento 2.4.8): el fallback de temas hace que ESTE archivo reemplace por completo
+//  al de Luma, así que sin la copia se pierden variables base de Luma que Truper asume que
+//  existen (fuente de iconos, colores de panel, etc.). Tras cada `composer update` de Magento,
+//  correr `make diff-luma-base` para detectar drift antes de desplegar.
 @import '_luma-base.less';
-@import '_truper-tokens.less';
+@import '_m3-tokens.less';
+@import '_fonts.less';
 
 //
-//  Typography
+//  Typography (M3 type scale)
 //  ---------------------------------------------
 
 @font-family-name__base: 'Roboto';
-@font-family__base: @font-family-name__base, @font-family__sans-serif;
+@font-family__base: @m3-font-family;
 
-@primary__color: @truper-color-text;
-@text__color: @truper-color-text;
+@primary__color: @m3-on-surface;
+@text__color: @m3-on-surface;
 
-@font-size__base: 14px;
-@font-size__s: 12px;
+@font-size__base: @m3-body-md;
+@font-size__s: @m3-body-sm;
 
-@h1__font-size: 40px;
-@h1__font-size-desktop: 40px;
+@h1__font-size: @m3-display-lg;
+@h1__font-size-desktop: @m3-display-lg;
 @h1__font-weight: @font-weight__regular;
-@h2__font-size: 30px;
+@h2__font-size: @m3-headline-lg;
 @h2__font-weight: @font-weight__regular;
-@h3__font-size: 18px;
+@h3__font-size: @m3-title-lg;
 @h3__font-weight: @font-weight__regular;
 
 //
-//  Colors
+//  Colors (M3 roles)
 //  ---------------------------------------------
 
-@theme__color__primary: @truper-color-primary;
-@theme__color__primary-alt: darken(@truper-color-primary, 8%);
-@link__color: @truper-color-primary;
-@link__hover__color: @theme__color__primary-alt;
-@page__background-color: @truper-color-white;
-@error__color: @truper-color-error;
-@border-color__base: @truper-color-stormy;
-@focus__color: @truper-color-primary;
+@theme__color__primary: @m3-primary;
+@theme__color__primary-alt: darken(@m3-primary, 8%);
+@link__color: @m3-primary;
+@link__hover__color: darken(@m3-primary, 12%);
+@page__background-color: @m3-surface;
+@error__color: @m3-error;
+@border-color__base: @m3-outline;
+@focus__color: @m3-primary;
+@panel__background-color: @m3-surface-container;
 
 //
-//  Buttons
+//  Buttons (M3 filled / outlined)
 //  ---------------------------------------------
 
-@button__border-radius: 50px;
-@button__padding: 12px 32px;
-@button__font-weight: @font-weight__regular;
+@button__border-radius: @m3-button-radius;
+@button__padding: 0 24px;
+@button__font-weight: 500;
+@button__font-size: @m3-label-lg;
 
-@button__color: @truper-color-primary;
-@button__background: @truper-color-white;
-@button__border: 1px solid @truper-color-primary;
-@button__hover__color: @truper-color-white;
-@button__hover__background: @truper-color-primary;
-@button__hover__border: 1px solid @truper-color-primary;
-@button__active__color: @truper-color-white;
-@button__active__background: @theme__color__primary-alt;
-@button__active__border: 1px solid @theme__color__primary-alt;
+@button__color: @m3-primary;
+@button__background: transparent;
+@button__border: 1px solid @m3-outline;
+@button__hover__color: @m3-primary;
+@button__hover__background: fade(@m3-primary, @m3-state-hover);
+@button__hover__border: 1px solid @m3-primary;
+@button__active__color: @m3-primary;
+@button__active__background: fade(@m3-primary, @m3-state-pressed);
+@button__active__border: 1px solid @m3-primary;
 @button__disabled__opacity: 1;
 
-@button-primary__background: @truper-color-primary;
-@button-primary__border: 1px solid @truper-color-primary;
-@button-primary__color: @truper-color-white;
-@button-primary__hover__background: @theme__color__primary-alt;
-@button-primary__hover__border: 1px solid @theme__color__primary-alt;
-@button-primary__hover__color: @truper-color-white;
-@button-primary__active__background: darken(@truper-color-primary, 12%);
-@button-primary__active__border: 1px solid darken(@truper-color-primary, 12%);
-@button-primary__active__color: @truper-color-white;
+@button-primary__background: @m3-primary;
+@button-primary__border: 1px solid @m3-primary;
+@button-primary__color: @m3-on-primary;
+@button-primary__hover__background: darken(@m3-primary, 6%);
+@button-primary__hover__border: 1px solid darken(@m3-primary, 6%);
+@button-primary__hover__color: @m3-on-primary;
+@button-primary__active__background: darken(@m3-primary, 12%);
+@button-primary__active__border: 1px solid darken(@m3-primary, 12%);
+@button-primary__active__color: @m3-on-primary;
 
 //
-//  Messages
+//  Messages (M3 snackbar / banner)
 //  ---------------------------------------------
 
-@message__border-radius: 8px;
+@message__border-radius: @m3-shape-sm;
 @message__padding: 16px 24px 16px 56px;
 
-@message-success__color: @truper-color-white;
-@message-success__background: @truper-color-success;
-@message-success-icon__color-inner: @truper-color-white;
-@message-success-icon__background: @truper-color-success;
-@message-success-icon__color-lateral: @truper-color-white;
+@message-success__color: @m3-on-success;
+@message-success__background: @m3-success;
+@message-success-icon__color-inner: @m3-on-success;
+@message-success-icon__background: @m3-success;
+@message-success-icon__color-lateral: @m3-on-success;
 
-@message-error__color: @truper-color-white;
-@message-error__background: @truper-color-error;
-@message-error-icon__color-inner: @truper-color-white;
-@message-error-icon__background: @truper-color-error;
-@message-error-icon__color-lateral: @truper-color-white;
+@message-error__color: @m3-on-error;
+@message-error__background: @m3-error;
+@message-error-icon__color-inner: @m3-on-error;
+@message-error-icon__background: @m3-error;
+@message-error-icon__color-lateral: @m3-on-error;
 
-@message-info__color: @truper-color-primary;
-@message-info__background: @truper-color-disabled;
-@message-info-icon__color-inner: @truper-color-primary;
-@message-info-icon__background: @truper-color-disabled;
-@message-info-icon__color-lateral: @truper-color-primary;
+@message-info__color: @m3-on-primary-container;
+@message-info__background: @m3-primary-container;
+@message-info-icon__color-inner: @m3-on-primary-container;
+@message-info-icon__background: @m3-primary-container;
+@message-info-icon__color-lateral: @m3-on-primary-container;
 
-@message-warning__color: @truper-color-primary;
-@message-warning__background: @truper-color-disabled;
-@message-warning-icon__color-inner: @truper-color-primary;
-@message-warning-icon__background: @truper-color-disabled;
-@message-warning-icon__color-lateral: @truper-color-primary;
+@message-warning__color: @m3-on-secondary-container;
+@message-warning__background: @m3-secondary-container;
+@message-warning-icon__color-inner: @m3-on-secondary-container;
+@message-warning-icon__background: @m3-secondary-container;
+@message-warning-icon__color-lateral: @m3-on-secondary-container;
 
 //
-//  Forms
+//  Forms (M3 outlined fields)
 //  ---------------------------------------------
 
-@form-element-input__border-radius: 0;
-@form-element-input__border-color: @truper-color-stormy;
-@form-element-input__focus__border-color: @truper-color-primary;
-@form-element-input-placeholder__color: @truper-color-stormy;
+@form-element-input__border-radius: @m3-field-radius;
+@form-element-input__border-color: @m3-outline;
+@form-element-input__focus__border-color: @m3-primary;
+@form-element-input-placeholder__color: @m3-on-surface-variant;
+@form-element-input__height: @m3-field-height;
 
-@select__border: 1px solid @truper-color-stormy;
-@select__border-radius: 4px;
-@select__height: 40px;
+@select__border: 1px solid @m3-outline;
+@select__border-radius: @m3-field-radius;
+@select__height: @m3-field-height;
 
-@form-field-label__font-weight: @font-weight__heavier;
+@form-field-label__font-weight: 500;
+@form-field-label__font-size: @m3-label-md;
+
+//
+//  Navigation
+//  ---------------------------------------------
+
+@navigation__background: @m3-surface-container;
+@navigation-level0-item__active__color: @m3-primary;

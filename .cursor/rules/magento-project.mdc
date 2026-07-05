@@ -1,0 +1,147 @@
+---
+description: Contexto, buenas prácticas, riesgos y flujo de trabajo para este boilerplate Magento 2.4.8 + Docker (Truper).
+alwaysApply: true
+---
+
+# Magento 2 Boilerplate — Guía del proyecto
+
+## Qué es este stack (no es un template oficial)
+
+Este repo **no** deriva de Adobe Commerce Cloud Docker, Warden, DDEV ni markshust/docker-magento. Es un **boilerplate propio** con decisiones conscientes:
+
+- Docker Compose manual (nginx + php-fpm 8.3 + MariaDB 11.4 + OpenSearch 2.19 + Redis 7 + Mailpit + cron)
+- Magento OSS instalado en `src/` vía `make install-oss` (mirror mage-os.org)
+- Volúmenes Docker para `var/`, `generated/`, `pub/static/`, `vendor/` (mitiga I/O lento en Windows/NTFS)
+- Git versiona solo `src/app/code/**` y `src/app/design/**` (código custom; core/vendor en volumen)
+
+**Contexto de uso: solo desarrollo local, repo público en GitHub** (`crbzxy/magento2-boilerplate`).
+Esto cambia qué riesgos importan: los puertos expuestos y OpenSearch sin auth
+NO son un problema mientras nadie más que este host acceda a ellos — son
+correctos para este caso de uso, no un defecto a corregir. Ver sección
+"Producción" para lo que sí haría falta si esto dejara de ser solo local.
+
+Alineación con buenas prácticas Magento: **buena para el alcance actual**. La infra Docker es sólida para dev local; CI mínimo y convenciones de módulo ya están en marcha (ver backlog).
+
+## Stack y versiones objetivo
+
+| Capa | Versión / elección |
+|------|-------------------|
+| Magento | 2.4.8 OSS (Community) |
+| PHP | 8.3 (estabilidad con extensiones) |
+| DB | MariaDB 11.4 |
+| Search | OpenSearch 2.19 (Elasticsearch compatible) |
+| Cache/sessions | Redis 7.2 |
+| Tema storefront | `Truper/default` (child de Luma) |
+| Locale principal | `es_MX` |
+| Modo dev | `developer` (local) |
+
+## Comandos — SIEMPRE vía Docker (Windows/PowerShell)
+
+Nunca ejecutar `bin/magento` en el host. Usar:
+
+```powershell
+docker compose exec php-fpm bin/magento <comando>
+# o atajos Makefile: make cache-flush, make theme-deploy, make compile, make upgrade, make perf-setup, make diff-luma-base
+```
+
+`make` no está instalado en algunos shells (p.ej. Git Bash sin coreutils extra) —
+si falla con "command not found", ejecutar el contenido del target directamente
+vía `docker compose exec` (ver `Makefile`).
+
+### `make upgrade` — script único post-upgrade/post-volumen-borrado
+
+Encadena `setup:upgrade` → purge de CSS compilado del tema → `setup:di:compile`
+→ `setup:static-content:deploy` (es_MX en_US, `Truper/default`) → `indexer:reindex`
+→ `chown www-data` → `cache:flush`. Ejecutar tras `composer update`,
+`setup:upgrade` manual, cambios en `di.xml`/módulos, o cuando
+`docker compose down -v` dejó `generated/`/`pub/static`/`var` vacíos.
+Validado end-to-end en este repo (2026-07-05): con `generated/` y
+`pub/static/frontend` vacíos, el pipeline completo dejó el sitio operativo
+(`perf-check` en verde, 1756 archivos estáticos, JS < 3ms).
+
+## Convenciones de código custom
+
+### Módulos (`src/app/code/Truper/`)
+
+- Namespace: `Truper\{ModuleName}`; un módulo = una responsabilidad
+- Estructura estándar Magento: `registration.php`, `etc/module.xml`, `composer.json` (ya presente en `Truper_LandingPage`), `di.xml`, `routes.xml`, layout XML en `view/frontend/layout/`
+- Templates `.phtml`: usar `$escaper->escapeHtml()` / `escapeUrl()` — **no** `$block->escapeHtml()` (deprecado 2.4.8)
+- Preferir plugins/observers sobre overrides de clases core; evitar `preference` salvo necesidad documentada
+- No editar `vendor/` ni parchear core sin módulo propio
+- **Coding standard**: `composer.json` (raíz del repo, no `src/`) trae `magento/magento-coding-standard` + `dealerdirect/phpcodesniffer-composer-installer`. Correr `vendor/bin/phpcs --standard=phpcs.xml.dist` (escanea solo `src/app/code/Truper` y `src/app/design/frontend/Truper`). CI (`.github/workflows/ci.yml`) corre esto en cada push/PR con `--warning-severity=0` (solo bloquea por errores; hay ~70 warnings de estilo CSS/LESS preexistentes en el tema, limpieza pendiente en P1).
+
+### Tema (`src/app/design/frontend/Truper/default/`)
+
+- Child de Luma; overrides en `_theme.less`, extensiones en `_extend.less`
+- Tokens de diseño: `_truper-tokens.less`, `_m3-tokens.less` — **no** hardcodear colores en componentes
+- `_luma-base.less` es copia textual de `vendor/magento/theme-frontend-luma/web/css/source/_theme.less` (100.4.8) — necesaria porque el fallback de temas hace que el `_theme.less` de Truper reemplace por completo al de Luma. **Verificar con `make diff-luma-base` tras cada upgrade de Magento** (mantener el archivo sin comentarios propios para que el diff sea limpio).
+- Fuentes: Roboto autoalojada (`web/fonts/roboto-latin-variable.woff2`, subset latin, variable font 300–700, `web/css/source/_fonts.less`). Ya no se carga desde `fonts.googleapis.com` (se eliminó `Magento_Theme::layout/default_head_blocks.xml`, que solo hacía eso).
+- **Gotcha de developer mode (verificado en vivo)**: `setup:static-content:deploy` NO recompila `styles-m.css`/`styles-l.css` si ya existen en `pub/static` — esos se generan una sola vez al vuelo (`static.php`) la primera vez que el navegador los pide, y nginx los sirve desde disco indefinidamente después, aunque cambie el LESS fuente. `make theme-deploy` y `make upgrade` ya borran esos `.css` antes de redeployar; si se edita LESS manualmente sin pasar por esos targets, borrar `pub/static/frontend/Truper/default/*/css/styles-*.css` a mano.
+
+### Git
+
+- Versionar: `src/app/code/**`, `src/app/design/**`, y (fuera de `src/`) `composer.json`/`composer.lock`/`phpcs.xml.dist`/`.github/` (tooling de CI, independiente del Magento instalado en `src/`)
+- **No** versionar: `vendor/` (raíz y `src/`), `generated/`, `pub/static/`, `var/`, `app/etc/env.php`, credenciales
+- `app/etc/` (incluido `config.php`, `di.xml`) **no está versionado** — confirmado que no hay parches custom de riesgo ahí: `app/etc/di.xml` difiere del stock `magento2-base` en una sola línea, una preferencia de Tax duplicada e inofensiva (idéntica a la de `module-tax/etc/di.xml`). `config.php` solo lista módulos habilitados/deshabilitados (nota: `Magento_TwoFactorAuth` y `Magento_AdminAdobeImsTwoFactorAuth` están en `0` — aceptable en dev local, revisar antes de cualquier entorno compartido).
+
+## Riesgos conocidos (prioridad)
+
+### Operativos
+
+1. ~~Volúmenes Docker vs bind mount pueden vaciar `generated/`/`pub/static`/`vendor/`~~ → resuelto con `make upgrade` (ver arriba).
+2. ~~Permisos www-data~~ → `make upgrade`/`make theme-deploy` hacen `chown` automático.
+3. **CSS stale en developer mode** (ver Tema arriba) — la trampa más fácil de pisar si se edita LESS a mano sin usar `make theme-deploy`.
+4. **Cron container**: sin él, indexers en "Update by Schedule" no avanzan. Verificar que el servicio `cron` esté up (`docker compose ps`).
+
+### Seguridad — aceptable en este contexto (solo local, repo público)
+
+- OpenSearch con `DISABLE_SECURITY_PLUGIN=true`, puertos DB/Redis/OpenSearch expuestos al host, credenciales por defecto en `.env.example`: todo correcto para "solo mi laptop". **No son hallazgos a corregir** salvo que el proyecto deje de ser local-only (ver sección Producción más abajo, en el README).
+- `.env` real está en `.gitignore` y no aparece en `git ls-files` — confirmado, no hay filtración de credenciales al repo público.
+
+### Mantenimiento
+
+- Copia `_luma-base.less` se desincroniza con upgrades de Magento — mitigado con `make diff-luma-base`, pero sigue siendo manual (nadie lo corre automáticamente en CI todavía).
+- Sample data incompleto sin `setup:upgrade` + `indexer:reindex` post-install → cubierto por `make upgrade`.
+
+## Áreas de trabajo (backlog)
+
+### P0 — Estabilidad del entorno — ✅ hecho
+- [x] `make upgrade`: upgrade → compile → static deploy → reindex → chown, validado en vivo
+- [x] `perf-check` corregido para `Truper/default` (antes apuntaba a Magento/luma)
+
+### P1 — Calidad de código — ✅ hecho
+- [x] `composer.json` en `Truper_LandingPage`
+- [x] Magento Coding Standard + CI mínimo (GitHub Actions: php -l, xmllint, phpcs)
+- [x] Revisión de `app/etc`: sin parches de riesgo que migrar (ver Git arriba)
+
+### P2 — Frontend — ✅ hecho
+- [x] Roboto autoalojada (se quitó la dependencia de `fonts.googleapis.com`)
+- [x] `_luma-base.less`: no se puede eliminar la copia (limitación real del fallback de temas de Magento), pero ahora hay `make diff-luma-base` para detectar drift en cada upgrade
+
+### P3 — Producción — documentado, no implementado
+- [ ] Ver sección "Producción (guía, no implementado aquí)" en `README.md`: `deploy:mode:set production`, secrets fuera de `.env`, auth en OpenSearch/Redis, no exponer puertos internos, Varnish, TLS, separación de hosts. Deliberadamente no se tocó `docker-compose.yml` para esto — mezclar "local" y "producción" en el mismo compose es peor que documentarlo aparte.
+
+### Pendiente futuro (no bloqueante)
+- [ ] Subir `--warning-severity` de phpcs una vez se limpien los ~70 warnings de estilo CSS/LESS preexistentes
+- [ ] Automatizar `make diff-luma-base` en CI (hoy es manual)
+
+## GraphQL (headless / integraciones)
+
+- Endpoint: `POST http://localhost:8080/graphql` — body JSON `{"query":"..."}`
+- `products` requiere `search` no vacío o `filter` explícito
+- Tras sample data: `indexer:reindex` + cache flush
+
+## Al crear features nuevas
+
+1. ¿Es lógica de negocio? → módulo en `app/code/Truper/`
+2. ¿Es presentación? → tema o módulo con `view/frontend/`
+3. ¿Afecta admin? → `view/adminhtml/` + ACL si aplica
+4. Tras cambios: `cache:flush`; si PHP/DI: `setup:di:compile`; si LESS/layout: `make theme-deploy` (no solo `cache:flush` — ver gotcha de CSS stale arriba)
+5. Probar en rutas: home (`cms_index_index`), customer login, checkout mínimo
+6. Antes de commitear: `vendor/bin/phpcs --standard=phpcs.xml.dist` (o dejar que CI lo haga en el PR)
+
+## Referencias útiles (no adoptadas literalmente)
+
+- [Magento DevDocs 2.4](https://developer.adobe.com/commerce/php/development/)
+- [Magento Coding Standard](https://github.com/magento/magento-coding-standard)
+- Warden / DDEV: patrones de cron, mutagen, xdebug — inspiración, no migración obligatoria

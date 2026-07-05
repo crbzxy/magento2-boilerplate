@@ -169,13 +169,17 @@ src/
 ## Comandos útiles
 
 ```bash
-make shell     # entra al contenedor de PHP
-make logs      # logs de nginx + php-fpm
-make restart   # reinicia todos los contenedores
-make down      # apaga todo (los datos persisten en volúmenes Docker)
-make perf-check   # diagnóstico rápido de rendimiento
-make perf-setup   # despliega estáticos + compila DI (tras borrar volúmenes)
-make compile      # regenera generated/ si falta Http\Interceptor
+make shell         # entra al contenedor de PHP
+make logs          # logs de nginx + php-fpm
+make restart       # reinicia todos los contenedores
+make down          # apaga todo (los datos persisten en volúmenes Docker)
+make cache-flush   # bin/magento cache:flush
+make theme-deploy  # redeploya estáticos de Truper/default (usar tras editar LESS/CSS)
+make upgrade       # script único: setup:upgrade + di:compile + static-deploy + reindex + chown
+make perf-check    # diagnóstico rápido de rendimiento
+make perf-setup    # despliega estáticos + compila DI (tras borrar volúmenes)
+make compile       # regenera generated/ si falta Http\Interceptor
+make diff-luma-base   # detecta drift entre _luma-base.less y Luma tras un upgrade
 ```
 
 ## Rendimiento en Windows
@@ -200,11 +204,31 @@ desplegados (nginx sirve JS/CSS directo, sin pasar por `static.php`).
 make perf-check
 ```
 
-Objetivo: `static files (luma/es_MX)` > 1000, `js sample time` < 0.05 s.
+Objetivo: `static files (Truper/default/es_MX)` > 1000, `js sample time` < 0.05 s.
+
+> **Nota developer mode**: `styles-m.css`/`styles-l.css` se compilan al vuelo la
+> primera vez que se piden (vía `static.php`) y luego nginx los sirve tal cual
+> desde `pub/static`, aunque cambie el LESS fuente. `make theme-deploy` y
+> `make upgrade` borran esos `.css` antes de redeployar para evitar servir una
+> versión vieja; si editas LESS sin pasar por esos comandos, bórralos a mano.
 
 Tras instalar Magento por primera vez, ejecuta `make perf-setup` una vez
 (~15 min). En developer mode la primera carga HTML tras `cache:flush` sigue
 siendo más lenta (~5–10 s); las siguientes deberían bajar a ~1–2 s.
+
+## Calidad de código
+
+El `composer.json` de la raíz (independiente del Magento instalado en `src/`)
+trae `magento/magento-coding-standard`. Antes de un PR:
+
+```bash
+composer install                              # una vez, instala phpcs + el standard
+vendor/bin/phpcs --standard=phpcs.xml.dist     # solo escanea código Truper, no core/vendor
+```
+
+CI (`.github/workflows/ci.yml`) corre esto mismo en cada push/PR, más `php -l`
+y validación de XML bien formado. El gate solo falla por errores; hay warnings
+de estilo CSS/LESS preexistentes en el tema pendientes de limpieza.
 
 ## Notas
 
@@ -213,3 +237,37 @@ siendo más lenta (~5–10 s); las siguientes deberían bajar a ~1–2 s.
 - Si en algún momento prefieres no mantener el `docker-compose.yml` a mano,
   Warden y DDEV hacen exactamente esto mismo mejor empaquetado — quedan como
   opción B si el mantenimiento manual empieza a pesar.
+
+## Producción (guía, no implementado aquí)
+
+Este repo y su `docker-compose.yml` son solo para desarrollo local. Nada de lo
+siguiente está hecho hoy — es la lista de lo que habría que resolver antes de
+correr este stack (o una variante de él) fuera de una laptop de desarrollo:
+
+- **`deploy:mode:set production`**: compila DI, minifica y sirve estáticos
+  pre-generados (nada de compilación LESS/JS al vuelo vía `static.php`).
+  Requiere `bin/magento setup:static-content:deploy` para **todos** los
+  locales/temas antes de cada release, como paso de build/CI.
+- **Secrets fuera de `.env` commiteable**: en dev, `.env` (ignorado por git)
+  con contraseñas de juguete está bien. En cualquier entorno compartido,
+  las credenciales de DB/Redis/OpenSearch y `app/etc/env.php` deben venir de
+  variables de entorno del orquestador o un vault, nunca de un archivo en el
+  repo.
+- **OpenSearch con auth**: hoy corre con
+  `DISABLE_SECURITY_PLUGIN=true` (`docker-compose.yml`), válido solo porque
+  nadie más que este host accede al puerto 9200. En producción hay que
+  habilitar el plugin de seguridad de OpenSearch con usuario/contraseña reales.
+- **Redis con auth**: el `redis-server` actual no define `requirepass`. En
+  producción necesita contraseña y, si es posible, no exponer el puerto al
+  exterior del contenedor.
+- **No exponer puertos internos**: `DB_PORT`, `REDIS_PORT`, `OPENSEARCH_PORT`
+  publicados al host (`ports:` en `docker-compose.yml`) son útiles para
+  depurar en local (un DBeaver, por ejemplo). En producción, `db`, `redis` y
+  `opensearch` no deberían tener `ports:` — solo la red interna de Docker.
+- **Varnish**: no está en este compose (deliberado, ver arriba). Producción
+  típica de Magento lo necesita delante de nginx para full-page cache.
+- **TLS real** y **separación de servicios en hosts/nodos distintos** en vez
+  de un solo `docker-compose.yml` monolítico.
+
+Nada de esto bloquea el uso actual del repo (local + repo público). Es la
+referencia a revisar el día que este stack deje de ser "solo mi laptop".

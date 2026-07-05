@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset name="Truper">
+    <description>Magento Coding Standard applied to custom Truper code only (core/vendor excluded).</description>
+
+    <file>src/app/code/Truper</file>
+    <file>src/app/design/frontend/Truper</file>
+
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg name="extensions" value="php,phtml"/>
+    <arg value="p"/>
+
+    <rule ref="Magento2"/>
+</ruleset>
