@@ -1,0 +1,5 @@
+.env
+src/
+docker/php/certs/*.crt
+docker/php/certs/*.pem
+!docker/php/certs/.gitkeep
